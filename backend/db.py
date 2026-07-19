@@ -3,7 +3,12 @@ import json
 import os
 from datetime import datetime
 
-DATABASE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lessons.db")
+DATABASE_FILE = os.getenv("DATABASE_FILE", "/tmp/lessons.db")
+
+# If running locally, fallback to packaged backend directory
+if not os.path.exists(os.path.dirname(DATABASE_FILE)):
+    os.makedirs(os.path.dirname(DATABASE_FILE), exist_ok=True)
+
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_FILE)
