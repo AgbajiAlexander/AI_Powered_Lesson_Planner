@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Lesson Architect | AI-Powered Lesson Planner</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <span class="logo-text">Lesson Architect</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-view="generator">
+                    <i data-lucide="file-plus"></i>
+                    <span>New Lesson</span>
+                </button>
+                <button class="nav-item" data-view="history">
+                    <i data-lucide="folder-heart"></i>
+                    <span>Saved Lessons</span>
+                </button>
+                <button class="nav-item" id="open-settings">
+                    <i data-lucide="settings"></i>
+                    <span>Settings</span>
+                </button>
+            </nav>
+
+            <div class="user-profile">
+                <div class="avatar">T</div>
+                <div class="user-info">
+                    <span class="username">Teacher Account</span>
+                    <span class="user-role">Educator</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-search-container">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="global-search" placeholder="Search lessons by topic or subject...">
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary btn-icon" id="quick-settings-btn">
+                        <i data-lucide="key"></i>
+                        <span>API Configuration</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- VIEW: DASHBOARD -->
+            <div class="view-panel active" id="view-dashboard">
+                <div class="welcome-banner">
+                    <div class="banner-content">
+                        <h1>Welcome back, Educator! 👋</h1>
+                        <p>Let's design structured, engaging, and curriculum-aligned lessons for your students today.</p>
+                        <button class="btn btn-primary" id="dashboard-new-lesson-btn">
+                            <i data-lucide="plus"></i>
+                            <span>Create New Lesson</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <div class="stat-icon bg-blue">
+                            <i data-lucide="book-open"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>Total Generated</h3>
+                            <p class="stat-number" id="stat-total-lessons">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon bg-green">
+                            <i data-lucide="clock"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>Time Saved</h3>
+                            <p class="stat-number" id="stat-time-saved">0 hrs</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon bg-amber">
+                            <i data-lucide="shield-alert"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>API Status</h3>
+                            <p class="stat-number text-status" id="stat-api-status">Demo Mode</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Lessons Section -->
+                <section class="recent-lessons-section">
+                    <div class="section-header">
+                        <h2>Recent Lesson Plans</h2>
+                        <div class="filter-tabs">
+                            <button class="filter-tab active" data-filter="all">All</button>
+                            <button class="filter-tab" data-filter="Primary">Primary</button>
+                            <button class="filter-tab" data-filter="Secondary">Secondary</button>
+                            <button class="filter-tab" data-filter="University">University</button>
+                        </div>
+                    </div>
+
+                    <div class="lessons-grid" id="lessons-list">
+                        <!-- Cards dynamically injected -->
+                        <div class="empty-state">
+                            <i data-lucide="book-dashed" class="empty-icon"></i>
+                            <h3>No lessons found</h3>
+                            <p>Get started by creating your first AI-assisted lesson plan!</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VIEW: LESSON GENERATOR WIZARD -->
+            <div class="view-panel" id="view-generator">
+                <div class="generator-split-container">
+                    <!-- Left: Sticky Form -->
+                    <div class="form-panel-sticky glass">
+                        <div class="panel-header">
+                            <h2 id="generator-panel-title">Lesson Parameters</h2>
+                            <p>Configure details for the AI instructional chain.</p>
+                        </div>
+
+                        <form id="lesson-wizard-form" class="wizard-form">
+                            <!-- Stepper 1: Core Details -->
+                            <div class="form-group">
+                                <label for="lesson-subject">Subject *</label>
+                                <input type="text" id="lesson-subject" placeholder="e.g., Biology, Mathematics, History" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lesson-topic">Topic *</label>
+                                <input type="text" id="lesson-topic" placeholder="e.g., Photosynthesis, Fraction Addition" required>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group half">
+                                    <label for="lesson-level">Class Level *</label>
+                                    <select id="lesson-level" required>
+                                        <option value="Primary">Primary (Elementary)</option>
+                                        <option value="Secondary" selected>Secondary (High School)</option>
+                                        <option value="University">University (Tertiary)</option>
+                                        <option value="Tutor">Private Tutoring</option>
+                                    </select>
+                                </div>
+                                <div class="form-group half">
+                                    <label for="lesson-duration">Duration *</label>
+                                    <input type="text" id="lesson-duration" placeholder="e.g., 45 minutes, 1 hour" value="45 minutes" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lesson-objectives">Custom Learning Objectives (Optional)</label>
+                                <textarea id="lesson-objectives" rows="2" placeholder="Leave empty for AI to generate, or write specific outcomes..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="lesson-resources">Classroom Resources Available (Optional)</label>
+                                <textarea id="lesson-resources" rows="2" placeholder="Whiteboard, lab equipment, projector, etc."></textarea>
+                            </div>
+
+                            <!-- Assessment Difficulty -->
+                            <div class="form-group">
+                                <label for="assessment-difficulty">Assessment Difficulty Level</label>
+                                <div class="radio-toggle-group">
+                                    <input type="radio" id="diff-beginner" name="difficulty" value="Beginner">
+                                    <label for="diff-beginner">Beginner</label>
+
+                                    <input type="radio" id="diff-intermediate" name="difficulty" value="Intermediate" checked>
+                                    <label for="diff-intermediate">Intermediate</label>
+
+                                    <input type="radio" id="diff-advanced" name="difficulty" value="Advanced">
+                                    <label for="diff-advanced">Advanced</label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-full-width" id="btn-generate-all">
+                                <i data-lucide="sparkles"></i>
+                                <span>Generate Lesson Package</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Right: Editor/Preview Area -->
+                    <div class="editor-panel scrollable">
+                        <!-- Empty State (Pre-generation) -->
+                        <div class="workspace-empty-state" id="workspace-empty">
+                            <div class="empty-illustration">
+                                <i data-lucide="notebook-tabs"></i>
+                            </div>
+                            <h2>Your Lesson Workspace</h2>
+                            <p>Fill out the parameters on the left and click **Generate** to watch the AI build a complete lesson plan package using chained reasoning.</p>
+                            <div class="tips-box">
+                                <h4>💡 Tips for high-quality plans:</h4>
+                                <ul>
+                                    <li>Provide specific topics (e.g. "Causes of the Cold War" instead of just "War").</li>
+                                    <li>List available materials in **Resources** to get custom demonstrations.</li>
+                                    <li>Make sure your **API Key** is configured in settings for live generations.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Loading State -->
+                        <div class="workspace-loading-state hidden" id="workspace-loading">
+                            <div class="pulse-loader"></div>
+                            <h3>Architecting Lesson Plan...</h3>
+                            <p>Building lesson structures and testing pedagogical alignment.</p>
+                            
+                            <div class="loading-steps-checklist">
+                                <div class="step-check current" id="load-step-1">
+                                    <i data-lucide="circle"></i>
+                                    <span>Structuring Lesson Outline & Hook</span>
+                                </div>
+                                <div class="step-check" id="load-step-2">
+                                    <i data-lucide="circle"></i>
+                                    <span>Drafting 10-Question Assessments</span>
+                                </div>
+                                <div class="step-check" id="load-step-3">
+                                    <i data-lucide="circle"></i>
+                                    <span>Creating Low-Cost Teaching Aids</span>
+                                </div>
+                                <div class="step-check" id="load-step-4">
+                                    <i data-lucide="circle"></i>
+                                    <span>Running AI Quality Audit & Critiques</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Generated Content Workspace -->
+                        <div class="workspace-content hidden" id="workspace-active">
+                            <!-- Action Bar -->
+                            <div class="workspace-actions-header">
+                                <div class="title-edit-container">
+                                    <input type="text" id="active-lesson-title" value="Lesson Title" class="editable-title-input">
+                                    <span class="save-status-indicator" id="save-status-text">Saved locally</span>
+                                </div>
+                                <div class="action-buttons-row">
+                                    <button class="btn btn-secondary btn-icon" id="btn-save-current">
+                                        <i data-lucide="save"></i>
+                                        <span>Save</span>
+                                    </button>
+                                    <div class="dropdown-wrapper">
+                                        <button class="btn btn-primary btn-icon" id="btn-export-dropdown">
+                                            <i data-lucide="download"></i>
+                                            <span>Export</span>
+                                            <i data-lucide="chevron-down"></i>
+                                        </button>
+                                        <div class="dropdown-menu hidden" id="export-menu">
+                                            <button class="dropdown-item" id="export-pdf">
+                                                <i data-lucide="file-text"></i>
+                                                <span>Print / Export PDF</span>
+                                            </button>
+                                            <button class="dropdown-item" id="export-word">
+                                                <i data-lucide="file-code"></i>
+                                                <span>Download Word (.docx)</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-danger-outline btn-icon-only" id="btn-delete-active" title="Delete Plan">
+                                        <i data-lucide="trash-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Workspace Tabs -->
+                            <div class="workspace-tabs">
+                                <button class="w-tab active" data-tab="plan">Lesson Outline</button>
+                                <button class="w-tab" data-tab="assessments">Assessments</button>
+                                <button class="w-tab" data-tab="aids">Teaching Aids</button>
+                                <button class="w-tab" data-tab="critique" id="critique-tab-btn">AI Audit & Improvement</button>
+                            </div>
+
+                            <!-- TAB CONTENT: LESSON PLAN -->
+                            <div class="tab-pane active" id="pane-plan">
+                                <div class="lesson-meta-summary bg-blue-light">
+                                    <div class="meta-item"><span class="lbl">Subject:</span> <strong id="summary-subject">Biology</strong></div>
+                                    <div class="meta-item"><span class="lbl">Level:</span> <strong id="summary-level">Secondary</strong></div>
+                                    <div class="meta-item"><span class="lbl">Duration:</span> <strong id="summary-duration">45 mins</strong></div>
+                                </div>
+
+                                <div class="disclaimer-alert">
+                                    <i data-lucide="alert-triangle"></i>
+                                    <span>Teacher Review Required: Please inspect and adjust details before classroom deployment.</span>
+                                </div>
+
+                                <!-- Editable Document Sections -->
+                                <div class="editable-document-body">
+                                    <section class="doc-section" data-section="objectives">
+                                        <div class="section-title-row">
+                                            <h3>Learning Objectives</h3>
+                                            <button class="section-regen-btn" data-sec-name="objectives"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                        </div>
+                                        <div class="section-content-editable" contenteditable="true" id="edit-objectives">
+                                            <!-- Injected list -->
+                                        </div>
+                                    </section>
+
+                                    <section class="doc-section" data-section="introduction">
+                                        <div class="section-title-row">
+                                            <h3>Hook & Introduction</h3>
+                                            <button class="section-regen-btn" data-sec-name="introduction"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                        </div>
+                                        <div class="section-content-editable" contenteditable="true" id="edit-introduction">
+                                            <!-- Injected content -->
+                                        </div>
+                                    </section>
+
+                                    <div class="activities-split-grid">
+                                        <section class="doc-section" data-section="teacher_activities">
+                                            <div class="section-title-row">
+                                                <h3>Teacher Activities</h3>
+                                                <button class="section-regen-btn" data-sec-name="teacher_activities"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                            </div>
+                                            <div class="section-content-editable" contenteditable="true" id="edit-teacher_activities">
+                                                <!-- Injected -->
+                                            </div>
+                                        </section>
+                                        
+                                        <section class="doc-section" data-section="student_activities">
+                                            <div class="section-title-row">
+                                                <h3>Student Activities</h3>
+                                                <button class="section-regen-btn" data-sec-name="student_activities"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                            </div>
+                                            <div class="section-content-editable" contenteditable="true" id="edit-student_activities">
+                                                <!-- Injected -->
+                                            </div>
+                                        </section>
+                                    </div>
+
+                                    <section class="doc-section" data-section="teaching_methods">
+                                        <div class="section-title-row">
+                                            <h3>Teaching Methods</h3>
+                                            <button class="section-regen-btn" data-sec-name="teaching_methods"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                        </div>
+                                        <div class="section-content-editable" contenteditable="true" id="edit-methods">
+                                            <!-- Injected -->
+                                        </div>
+                                    </section>
+
+                                    <section class="doc-section" data-section="assessment_plan">
+                                        <div class="section-title-row">
+                                            <h3>Assessment Plan (Formative)</h3>
+                                            <button class="section-regen-btn" data-sec-name="assessment_plan"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                        </div>
+                                        <div class="section-content-editable" contenteditable="true" id="edit-assessment-plan">
+                                            <!-- Injected -->
+                                        </div>
+                                    </section>
+
+                                    <section class="doc-section" data-section="assignment">
+                                        <div class="section-title-row">
+                                            <h3>Assignment / Homework</h3>
+                                            <button class="section-regen-btn" data-sec-name="assignment"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                        </div>
+                                        <div class="section-content-editable" contenteditable="true" id="edit-assignment">
+                                            <!-- Injected -->
+                                        </div>
+                                    </section>
+
+                                    <section class="doc-section" data-section="summary">
+                                        <div class="section-title-row">
+                                            <h3>Summary & Closing</h3>
+                                            <button class="section-regen-btn" data-sec-name="summary"><i data-lucide="rotate-cw"></i> Regenerate</button>
+                                        </div>
+                                        <div class="section-content-editable" contenteditable="true" id="edit-summary">
+                                            <!-- Injected -->
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+
+                            <!-- TAB CONTENT: ASSESSMENTS -->
+                            <div class="tab-pane" id="pane-assessments">
+                                <div class="pane-header-actions">
+                                    <h3>Chained 10-Question Quiz</h3>
+                                    <button class="btn btn-secondary btn-icon" id="btn-regenerate-assessments">
+                                        <i data-lucide="refresh-cw"></i>
+                                        <span>Regenerate Assessment</span>
+                                    </button>
+                                </div>
+                                <div class="editable-document-body" id="assessments-list-container">
+                                    <!-- Injected questions -->
+                                </div>
+                            </div>
+
+                            <!-- TAB CONTENT: TEACHING AIDS -->
+                            <div class="tab-pane" id="pane-aids">
+                                <div class="pane-header-actions">
+                                    <h3>Classroom Games & Aids</h3>
+                                    <button class="btn btn-secondary btn-icon" id="btn-regenerate-aids">
+                                        <i data-lucide="refresh-cw"></i>
+                                        <span>Regenerate Aids</span>
+                                    </button>
+                                </div>
+                                <div class="editable-document-body" id="aids-content-container">
+                                    <!-- Injected teaching aids -->
+                                </div>
+                            </div>
+
+                            <!-- TAB CONTENT: CRITIQUE -->
+                            <div class="tab-pane" id="pane-critique">
+                                <div class="critique-container">
+                                    <div class="critique-header">
+                                        <h3>Pedagogical Audit Report</h3>
+                                        <button class="btn btn-success btn-icon" id="btn-apply-optimizations">
+                                            <i data-lucide="check-circle-2"></i>
+                                            <span>Apply Optimized Version</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="audit-scores-row">
+                                        <div class="score-ring-card">
+                                            <div class="score-circle-container">
+                                                <svg viewBox="0 0 36 36" class="circular-chart blue">
+                                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                    <path class="circle" id="score-ring-engagement" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                </svg>
+                                                <div class="score-percentage" id="score-text-engagement">0%</div>
+                                            </div>
+                                            <span>Student Engagement</span>
+                                        </div>
+                                        <div class="score-ring-card">
+                                            <div class="score-circle-container">
+                                                <svg viewBox="0 0 36 36" class="circular-chart green">
+                                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                    <path class="circle" id="score-ring-clarity" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                </svg>
+                                                <div class="score-percentage" id="score-text-clarity">0%</div>
+                                            </div>
+                                            <span>Clarity & Flow</span>
+                                        </div>
+                                        <div class="score-ring-card">
+                                            <div class="score-circle-container">
+                                                <svg viewBox="0 0 36 36" class="circular-chart amber">
+                                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                    <path class="circle" id="score-ring-alignment" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                                </svg>
+                                                <div class="score-percentage" id="score-text-alignment">0%</div>
+                                            </div>
+                                            <span>Objective Alignment</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="critique-feedback-box glass">
+                                        <h4>Audit Findings & Suggestions:</h4>
+                                        <ul id="critique-feedback-list">
+                                            <!-- Injected list -->
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: SAVED LESSONS -->
+            <div class="view-panel" id="view-history">
+                <div class="history-container">
+                    <div class="pane-header-actions">
+                        <h2>Saved Lesson Library</h2>
+                        <div class="search-filters">
+                            <input type="text" id="library-search" placeholder="Search by topic or subject...">
+                        </div>
+                    </div>
+                    
+                    <div class="lessons-grid" id="library-lessons-list">
+                        <!-- Saved lessons dynamically injected here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div class="modal-overlay hidden" id="settings-modal">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3><i data-lucide="settings"></i> System Configuration</h3>
+                <button class="btn-close" id="close-settings-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>AI Engine Key Configuration</h4>
+                    <p class="settings-desc">Input your personal Google Gemini API key to run live generations. Keys are saved securely in your local browser storage.</p>
+                    
+                    <div class="form-group">
+                        <label for="settings-gemini-key">Gemini API Key</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="settings-gemini-key" placeholder="Enter GEMINI_API_KEY (AI Studio Key)...">
+                            <button type="button" class="btn-toggle-visibility" id="toggle-key-visibility">
+                                <i data-lucide="eye"></i>
+                            </button>
+                        </div>
+                        <span class="helper-text">Get a free key from the <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a>.</span>
+                    </div>
+
+                    <div class="form-group row-align">
+                        <label for="settings-toggle-demo">Force Demo / Mock Mode</label>
+                        <label class="switch-toggle">
+                            <input type="checkbox" id="settings-toggle-demo">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h4>About Lesson Architect</h4>
+                    <p class="settings-desc">Version 1.0 (MVP) - Built with ❤️ for Educators.</p>
+                    <div class="features-list-badge">
+                        <span>Chained LLM Prompts</span>
+                        <span>SQLite Local Saving</span>
+                        <span>Docx & PDF Exports</span>
+                        <span>Persona Alignment</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-settings">Cancel</button>
+                <button class="btn btn-primary" id="btn-save-settings">Save Configurations</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTML Template for Printing (Hidden on screen) -->
+    <div id="print-layout-container" class="print-only"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
