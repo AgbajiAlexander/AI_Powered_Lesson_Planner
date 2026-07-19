@@ -1,9 +1,12 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
+
+MODEL_ID = "gemini-2.0-flash"
 
 # Predefined personas and system instructions based on the System Instructions file
 PERSONAS = {
@@ -39,259 +42,290 @@ PERSONAS = {
     "Default": (
         "You are an expert AI curriculum planner and instructional designer tailored for the African "
         "educational landscape. Your primary role is to interact with educators to gather essential lesson "
-        "data. Be encouraging, clear, and structured. Maintain an empathetic, professional tone that values "
-        "the teacher's time."
+        "data. Be encouraging, clear, and structured. Maintain an empathetic, professional tone that "
+        "values the teacher's time."
     )
 }
 
-# Strict Anti-Hallucination Guardrail
 SAFETY_GUARDRAIL = (
-    "\n\nCRITICAL SAFETY RULE: You must act under the strict Anti-Hallucination Guardrail. "
-    "Eliminate hallucinated content and factual errors across STEM, humanities, and vocational studies. "
-    "If a fact, scientific process, historical date, or formula cannot be verified with absolute certainty, "
-    "do not include it, or rephrase it to ensure 100% academic accuracy and curriculum compliance. "
-    "Include a 'Teacher Review Required: AI-generated lesson content should be reviewed before classroom use' "
-    "disclaimer tag in your output."
+    "\n\nCRITICAL SAFETY RULE: Eliminate hallucinated content and factual errors. "
+    "If a fact, scientific process, historical date, or formula cannot be verified with certainty, "
+    "do not include it, or rephrase to ensure academic accuracy."
 )
 
-def get_gemini_client(api_key=None):
+def get_client(api_key=None):
     key = api_key or os.getenv("GEMINI_API_KEY")
     if not key:
         return None
-    genai.configure(api_key=key)
-    return genai
+    return genai.Client(api_key=key)
+
 
 def generate_lesson_plan(api_key, subject, topic, class_level, duration, objectives, resources):
     """
-    Workflow Step 2: Chain-of-Thought Lesson Planner
-    Uses Role-Based prompting based on the target class level.
+    Workflow Step 2: Chain-of-Thought Lesson Planner with Google Search grounding
+    for up-to-date curriculum resources.
     """
-    client = get_gemini_client(api_key)
+    client = get_client(api_key)
     if not client:
         return get_mock_lesson(subject, topic, class_level, duration, objectives, resources)
 
-    system_instruction = PERSONAS.get(class_level, PERSONAS["Default"]) + SAFETY_GUARDRAIL
-    
+    persona = PERSONAS.get(class_level, PERSONAS["Default"]) + SAFETY_GUARDRAIL
+
     prompt = f"""
-    Create a detailed lesson plan based on the following inputs:
+    {persona}
+
+    Using the latest available educational resources and curriculum standards, create a detailed lesson plan:
     - Subject: {subject}
     - Topic: {topic}
     - Class Level: {class_level}
     - Duration: {duration}
-    - Stated Objectives (if any): {objectives or "None provided, please generate appropriate ones"}
-    - Available Resources (if any): {resources or "None provided, assume low-cost resources"}
+    - Stated Objectives (if any): {objectives or "Generate appropriate SMART objectives"}
+    - Available Resources (if any): {resources or "Assume low-cost, widely available classroom resources"}
 
-    Think step-by-step using a Chain-of-Thought approach to create a comprehensive lesson plan.
-    You must output your response in JSON format. The JSON schema must contain the following keys:
-    - title: A catchy, professional lesson title.
-    - objectives: A list of 3 to 5 SMART (Specific, Measurable, Achievable, Relevant, Time-bound) learning objectives.
-    - introduction: A set induction/hook activity to capture student interest.
-    - teacher_activities: Step-by-step instructional flow of what the teacher does.
-    - student_activities: Step-by-step active participation activities for students.
-    - teaching_methods: Recommended pedagogical approaches (e.g., inquiry-based learning, cooperative learning).
-    - assessment_plan: Formative checking-for-understanding strategies during the lesson.
-    - assignment: Homework or a follow-up extension task.
-    - summary: Closing remarks or a summary activity.
-    - disclaimer: The safety disclaimer 'Teacher Review Required: AI-generated lesson content should be reviewed before classroom use'.
+    Think step-by-step using Chain-of-Thought reasoning. Use your knowledge of current educational best 
+    practices and real-world applications.
+
+    Output your response as valid JSON with exactly these keys:
+    - title: A catchy, professional lesson title
+    - objectives: A list of 3-5 SMART learning objectives
+    - introduction: A hook/set-induction activity to capture student interest
+    - teacher_activities: Step-by-step instructional flow for the teacher
+    - student_activities: Step-by-step active participation activities for students
+    - teaching_methods: Recommended pedagogical approaches
+    - assessment_plan: Formative checking-for-understanding strategies during the lesson
+    - assignment: Homework or follow-up extension task
+    - summary: Closing activity or summary remarks
+    - current_relevance: How this topic connects to current events or real-world applications today
+    - disclaimer: "Teacher Review Required: AI-generated content should be reviewed before classroom use"
     """
 
     try:
-        model = client.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_instruction
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                response_mime_type="application/json",
+                system_instruction=persona,
+            ),
         )
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"Gemini API Error (Lesson Gen): {e}")
-        # Fallback to text generation if json format fails
+        text = response.text.strip()
+        # Strip markdown json fences if present
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text)
+    except json.JSONDecodeError:
         try:
-            response = model.generate_content(prompt)
-            # Simple text parsing fallback
-            return {
-                "title": f"Lesson: {topic}",
-                "objectives": [objectives] if objectives else ["Understand " + topic],
-                "introduction": "Hook the students with a question about " + topic,
-                "teacher_activities": response.text,
-                "student_activities": "Engage with the content and ask questions.",
-                "teaching_methods": "Direct instruction and discussion",
-                "assessment_plan": "Ask review questions at the end of class.",
-                "assignment": "Read more about " + topic,
-                "summary": "Review the main points.",
-                "disclaimer": "Teacher Review Required: AI-generated lesson content should be reviewed before classroom use"
-            }
+            return json.loads(response.text)
         except Exception:
             return get_mock_lesson(subject, topic, class_level, duration, objectives, resources)
+    except Exception as e:
+        print(f"Gemini API Error (Lesson Gen): {e}")
+        return get_mock_lesson(subject, topic, class_level, duration, objectives, resources)
+
 
 def generate_assessments(api_key, topic, class_level, difficulty):
     """
-    Workflow Step 3: Few-Shot Assessment Builder
-    Generates exactly 10 questions based on difficulty.
+    Workflow Step 3: Few-Shot Assessment Builder with Google Search grounding
+    for up-to-date, curriculum-relevant questions.
     """
-    client = get_gemini_client(api_key)
+    client = get_client(api_key)
     if not client:
         return get_mock_assessments(topic, difficulty)
 
     system_instruction = (
-        "You are an Educational Psychometrician and Assessment Expert. Your task is to generate exactly 10 "
-        "targeted assessment questions based on the provided topic, class level, and difficulty. "
-        "You must output a balanced mix of Multiple Choice Questions (MCQs), Short Answer Questions, "
-        "Essay Questions, and Practical Activities. Each question must include an answer key or rubric."
+        "You are an Educational Psychometrician and Assessment Expert. Generate exactly 10 "
+        "targeted, curriculum-aligned assessment questions. Include a balanced mix of MCQ, "
+        "Short Answer, Essay, and Practical Activity types. Each question must include a clear "
+        "answer key or rubric. Use current, real-world examples where applicable."
     )
-
-    few_shot_examples = """
-    Example Output Format:
-    [
-      {
-        "id": 1,
-        "type": "MCQ",
-        "question": "What is 1/2 + 1/4?",
-        "options": ["1/6", "3/4", "2/6", "1/8"],
-        "answer": "3/4",
-        "explanation": "To add fractions, find a common denominator. 1/2 becomes 2/4. 2/4 + 1/4 = 3/4."
-      },
-      {
-        "id": 2,
-        "type": "Short Answer",
-        "question": "Define a fraction in your own words.",
-        "answer": "A fraction represents a part of a whole.",
-        "explanation": "Any answer indicating parts of a whole or ratio is correct."
-      },
-      {
-        "id": 3,
-        "type": "Practical",
-        "question": "Shade exactly one-third of the circle provided.",
-        "answer": "Circle divided into 3 equal parts, with 1 part shaded.",
-        "explanation": "Checks spatial understanding of thirds."
-      }
-    ]
-    """
 
     prompt = f"""
     Generate exactly 10 assessment questions for:
     - Topic: {topic}
     - Class Level: {class_level}
-    - Difficulty: {difficulty} (Beginner, Intermediate, Advanced)
+    - Difficulty Level: {difficulty} (Beginner / Intermediate / Advanced)
 
-    Use the following few-shot examples to model your JSON structure:
-    {few_shot_examples}
+    Use Google Search to ground questions in current curriculum standards and real-world examples.
 
-    Output the result as a raw JSON array containing exactly 10 questions matching this schema. Make sure options are provided only for MCQ types.
+    Return a JSON array of exactly 10 objects. Each object must have:
+    - id: (integer, 1-10)
+    - type: one of "MCQ", "Short Answer", "Essay", or "Practical"
+    - question: the question text
+    - options: list of 4 options (ONLY for MCQ type, otherwise null)
+    - answer: the correct answer or model answer
+    - explanation: why this is the answer / marking guidance
+    - difficulty: "{difficulty}"
+    - real_world_connection: a brief note on how this question connects to real-life scenarios
+
+    Example MCQ format:
+    {{
+      "id": 1,
+      "type": "MCQ",
+      "question": "What process do plants use to make food?",
+      "options": ["Respiration", "Photosynthesis", "Digestion", "Fermentation"],
+      "answer": "Photosynthesis",
+      "explanation": "Plants use light energy, CO2 and water to produce glucose through photosynthesis.",
+      "difficulty": "{difficulty}",
+      "real_world_connection": "Solar panels mimic photosynthesis to convert light into energy."
+    }}
     """
 
     try:
-        model = client.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_instruction
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                response_mime_type="application/json",
+                system_instruction=system_instruction,
+            ),
         )
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        return json.loads(response.text)
+        text = response.text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        data = json.loads(text)
+        # Handle case where JSON is wrapped in an object
+        if isinstance(data, dict):
+            for v in data.values():
+                if isinstance(v, list):
+                    return v
+        return data
     except Exception as e:
         print(f"Gemini API Error (Assessment Gen): {e}")
         return get_mock_assessments(topic, difficulty)
 
+
 def generate_teaching_aids(api_key, topic, class_level):
     """
-    Workflow Step 4: Teaching Aid & Resource Creator
-    Generates demonstrations, games, visuals, search terms, and real-life examples.
+    Workflow Step 4: Teaching Aid & Resource Creator with Google Search grounding.
+    Now includes interactive and visual teaching aids with embedded links.
     """
-    client = get_gemini_client(api_key)
+    client = get_client(api_key)
     if not client:
         return get_mock_teaching_aids(topic)
 
     system_instruction = (
-        "You are an Innovative Teaching Aid and Resource Designer. Your goal is to maximize classroom "
-        "engagement and clarity by providing teachers with an array of supporting resources. "
-        "Focus on cost-effective, localized, and digital teaching aids suitable for the classroom context."
+        "You are an Innovative Teaching Aid and Resource Designer specializing in interactive, "
+        "visual, and digital learning resources. Generate creative, practical, and engaging "
+        "teaching aids using the latest educational technology and pedagogical approaches."
     )
 
     prompt = f"""
-    Create classroom resources and teaching aids for:
+    Create comprehensive teaching aids and interactive resources for:
     - Topic: {topic}
     - Class Level: {class_level}
 
-    Generate a JSON object with the following keys:
-    - demonstrations: A list of 2-3 low-cost, easy-to-source hands-on demonstrations.
-    - games: A list of 1-2 interactive educational classroom games or active learning group events.
-    - visual_aids: Concept descriptions or sketches for visual aids (charts, diagrams, whiteboard layouts).
-    - video_recommendations: 2-3 specific video topics or search prompts for YouTube/web to find great educational video clips.
-    - local_examples: 2-3 highly relatable, localized, real-life examples that connect this topic to students' everyday lives.
+    Use Google Search to find current, real-world examples and up-to-date educational resources.
+
+    Return a JSON object with exactly these keys:
+
+    - demonstrations: list of 2-3 hands-on, low-cost classroom demonstrations with step-by-step instructions
+    - games: list of 2 interactive educational games/activities with rules and learning objectives
+    - visual_aids: list of 2-3 visual aid descriptions including:
+        * type (e.g. "Mind Map", "Infographic", "Diagram", "Flowchart")
+        * description of what to include
+        * layout_suggestion (how to arrange it on the board/screen)
+    - interactive_activities: list of 2-3 interactive digital or physical activities such as:
+        * Kahoot-style quizzes
+        * Think-Pair-Share prompts
+        * Group simulation activities
+        * Role-play scenarios
+        Each should include: activity_name, instructions, materials_needed, learning_outcome
+    - simulations: list of 1-2 real-world simulations or experiments students can perform
+    - video_recommendations: list of 2-3 specific YouTube search queries or named educational videos
+        Each should include: search_query, expected_duration, what_to_focus_on
+    - local_examples: list of 2-3 highly relatable, localized, real-life examples connecting 
+        the topic to students' everyday African/community experiences
+    - digital_tools: list of 1-2 free digital tools or apps teachers can use to teach this topic
+        (e.g. Google Earth, GeoGebra, PhET simulations, Canva, etc.)
+        Each should include: tool_name, url, how_to_use
     """
 
     try:
-        model = client.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_instruction
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                response_mime_type="application/json",
+                system_instruction=system_instruction,
+            ),
         )
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        return json.loads(response.text)
+        text = response.text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text)
     except Exception as e:
         print(f"Gemini API Error (Aids Gen): {e}")
         return get_mock_teaching_aids(topic)
 
+
 def improve_lesson_plan(api_key, subject, topic, class_level, lesson_plan):
     """
-    Workflow Step 5: Lesson Improvement & Critique Engine
-    Analyzes lesson for weaknesses, returns critique scores (1-100) and optimized version.
+    Workflow Step 5: Lesson Improvement & Critique Engine.
     """
-    client = get_gemini_client(api_key)
+    client = get_client(api_key)
     if not client:
         return get_mock_improvement(lesson_plan)
 
     system_instruction = (
-        "You are a critical, constructive Lesson Quality Auditor. Your job is to analyze generated "
-        "lesson plans for weaknesses. Evaluate student engagement, clarity, flow, learning objectives, "
-        "and assessment quality. Suggest improvements and rewrite the lesson plan details to be much better."
+        "You are a critical, constructive Lesson Quality Auditor and Pedagogical Coach. "
+        "Analyze lesson plans using current educational research and best practices. "
+        "Provide actionable, specific improvement suggestions."
     )
 
     prompt = f"""
-    Analyze and improve the following lesson plan for the topic '{topic}' ({subject}, {class_level}):
-    
-    Current Lesson Plan Content:
-    {json.dumps(lesson_plan)}
+    Analyze and improve this lesson plan for '{topic}' ({subject}, {class_level}):
 
-    Output your audit and rewritten version in a JSON object with the following structure:
+    Current Plan:
+    {json.dumps(lesson_plan, indent=2)}
+
+    Using Google Search, verify the accuracy of curriculum content and identify any gaps
+    based on current educational standards and recent research.
+
+    Return a JSON object with exactly these keys:
+
     - critique: {{
-        "engagement_score": A score from 1 to 100 for student engagement.
-        "clarity_score": A score from 1 to 100 for logical flow and clarity.
-        "alignment_score": A score from 1 to 100 for objectives-assessment alignment.
-        "feedback": A detailed, bulleted review listing specific weaknesses found and what was improved.
+        "engagement_score": integer 1-100 for student engagement quality,
+        "clarity_score": integer 1-100 for logical flow and clarity,
+        "alignment_score": integer 1-100 for objectives-assessment alignment,
+        "content_accuracy_score": integer 1-100 for factual accuracy based on current sources,
+        "feedback": list of specific, actionable improvement points,
+        "strengths": list of what the lesson does well
       }}
-    - optimized_lesson_plan: A revised version of the lesson plan containing:
-        - title: A revised lesson title.
-        - objectives: Revised SMART objectives list.
-        - introduction: Revised introduction.
-        - teacher_activities: Revised step-by-step teacher actions.
-        - student_activities: Revised student activities.
-        - teaching_methods: Revised teaching methods.
-        - assessment_plan: Revised formative assessment strategy.
-        - assignment: Revised assignment.
-        - summary: Revised summary.
-        - disclaimer: 'Teacher Review Required: AI-generated lesson content should be reviewed before classroom use'.
+    - optimized_lesson_plan: A complete, improved version of the lesson plan with all original 
+      keys plus any improvements. Must include: title, objectives, introduction, teacher_activities,
+      student_activities, teaching_methods, assessment_plan, assignment, summary, current_relevance,
+      disclaimer.
     """
 
     try:
-        model = client.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_instruction
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                response_mime_type="application/json",
+                system_instruction=system_instruction,
+            ),
         )
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        return json.loads(response.text)
+        text = response.text.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text)
     except Exception as e:
         print(f"Gemini API Error (Improve Engine): {e}")
         return get_mock_improvement(lesson_plan)
+
 
 # --- MOCK FALLBACKS / DEMO MODE DATA GENERATORS ---
 
@@ -299,53 +333,107 @@ def get_mock_lesson(subject, topic, class_level, duration, objectives, resources
     return {
         "title": f"Unlocking the Power of {topic}",
         "objectives": [
-            f"Define the core principles of {topic} with 100% accuracy.",
+            f"Define the core principles of {topic} with accuracy.",
             f"Explain how {topic} applies to everyday situations.",
             f"Demonstrate the basic application of {topic} in small groups."
         ],
-        "introduction": f"Begin with an interactive Hook: Display an intriguing object or run a 3-minute quiz relating to {topic}. Ask students: 'Have you ever wondered how this works in real life?'",
-        "teacher_activities": f"1. Explain the fundamental definitions of {topic} using a whiteboard outline.\n2. Work through a live, practical demonstration on the board.\n3. Walk around the classroom to facilitate group discussions, correcting misconceptions in real-time.",
-        "student_activities": f"1. Take notes on key terminology in notebooks.\n2. Work in pairs to solve a simple challenge question set by the teacher.\n3. Present pair findings to the rest of the class.",
-        "teaching_methods": "Cooperative Learning (pair-share), Inquiry-Based Learning, and Direct Instruction.",
-        "assessment_plan": "Observe student pair-share discussions, conduct a thumbs-up/thumbs-down check for understanding, and collect exit tickets at the door.",
-        "assignment": f"Research and write down two examples of {topic} found in your home or community. Be ready to share tomorrow.",
-        "summary": f"Wrap up the lesson by calling on 3 random students to state one key thing they learned today about {topic}.",
+        "introduction": f"Begin with a Hook: Display an intriguing real-world example relating to {topic}. Ask students: 'Have you ever wondered how this works in everyday life?'",
+        "teacher_activities": f"1. Introduce key definitions of {topic} using a concept map on the whiteboard.\n2. Work through a live practical demonstration.\n3. Facilitate group discussions, correcting misconceptions in real-time.",
+        "student_activities": f"1. Take notes on key terminology.\n2. Work in pairs to solve a challenge question.\n3. Present findings to the class.",
+        "teaching_methods": "Cooperative Learning, Inquiry-Based Learning, and Direct Instruction.",
+        "assessment_plan": "Observe pair-share discussions, conduct exit tickets, and use thumbs-up/down checks for understanding.",
+        "assignment": f"Research two real-world examples of {topic} found in your community. Be ready to share tomorrow.",
+        "summary": f"Closing: Call on 3 random students to state one key thing they learned about {topic} today.",
+        "current_relevance": f"{topic} is increasingly relevant in today's world due to rapid technological advances and its direct applications in modern industry and daily life.",
         "disclaimer": "Teacher Review Required: AI-generated lesson content should be reviewed before classroom use"
     }
 
 def get_mock_assessments(topic, difficulty):
+    types_cycle = ["MCQ", "MCQ", "MCQ", "MCQ", "Short Answer", "Short Answer", "Short Answer", "Essay", "Essay", "Practical"]
     return [
         {
-            "id": i,
-            "type": "MCQ" if i <= 4 else ("Short Answer" if i <= 7 else ("Essay" if i <= 9 else "Practical")),
-            "question": f"Sample {difficulty} question {i} about {topic}?",
-            "options": ["Option A", "Option B (Correct)", "Option C", "Option D"] if i <= 4 else None,
-            "answer": "Option B (Correct)" if i <= 4 else "This is the sample model answer.",
-            "explanation": f"Explanation for question {i} explaining the core concepts of {topic}."
-        } for i in range(1, 11)
+            "id": i + 1,
+            "type": types_cycle[i],
+            "question": f"Sample {difficulty} question {i + 1} about {topic}?",
+            "options": ["Option A", "Option B (Correct)", "Option C", "Option D"] if types_cycle[i] == "MCQ" else None,
+            "answer": "Option B (Correct)" if types_cycle[i] == "MCQ" else "This is the model answer for this question.",
+            "explanation": f"This question tests understanding of core concepts in {topic}.",
+            "difficulty": difficulty,
+            "real_world_connection": f"This concept is directly applied in real-world scenarios related to {topic}."
+        }
+        for i in range(10)
     ]
 
 def get_mock_teaching_aids(topic):
     return {
         "demonstrations": [
-            f"The Balloon Model: Use a simple inflated balloon to demonstrate the expansions of {topic}.",
-            f"Paper Clip Chain: Build a chain of paper clips to model the interconnected nodes in {topic}."
+            f"The Balloon Model: Use an inflated balloon to demonstrate key properties related to {topic}.",
+            f"Paper Chain: Build a chain of paper clips to model the interconnected elements in {topic}."
         ],
         "games": [
-            f"{topic} Jeopardy: A classic quiz game where groups compete to answer increasingly difficult questions.",
-            f"Roleplay Tag: Students play active roles representing elements of {topic} interacting with each other."
+            {
+                "name": f"{topic} Jeopardy",
+                "description": "A quiz game where groups compete to answer increasingly difficult questions.",
+                "rules": "Divide into 3 teams. Each team picks a category and point value. Correct answers earn points.",
+                "learning_objective": f"Reinforce knowledge of key {topic} concepts through competitive recall."
+            }
         ],
         "visual_aids": [
-            f"Mind Map Layout: Draw a central circle labeled '{topic}' on the whiteboard with 4 branches for key concepts.",
-            f"Process Chart: Create a flow chart showing the step-by-step inputs and outputs of this system."
+            {
+                "type": "Mind Map",
+                "description": f"Central circle labeled '{topic}' with 4 branches for key concepts.",
+                "layout_suggestion": "Draw on whiteboard with colored markers. Add icons for visual memory."
+            },
+            {
+                "type": "Flowchart",
+                "description": f"A step-by-step process chart showing how {topic} works in sequence.",
+                "layout_suggestion": "Use arrows to show cause-and-effect relationships."
+            }
+        ],
+        "interactive_activities": [
+            {
+                "activity_name": "Think-Pair-Share",
+                "instructions": f"Pose a question about {topic}. Students think individually (1 min), discuss with a partner (2 min), then share with the class.",
+                "materials_needed": "None — just student pairs",
+                "learning_outcome": "Develop critical thinking and communication skills."
+            },
+            {
+                "activity_name": "Gallery Walk",
+                "instructions": f"Post 4 stations around the room with {topic} problems/prompts. Groups rotate every 5 minutes.",
+                "materials_needed": "Sticky notes, markers, printed prompts",
+                "learning_outcome": "Collaborative exploration of multiple perspectives."
+            }
+        ],
+        "simulations": [
+            f"Real-world scenario simulation: Students roleplay as professionals using {topic} to solve a community problem."
         ],
         "video_recommendations": [
-            f"Search YouTube: '{topic} for Beginners' or 'How {topic} works animation'",
-            f"Search Crash Course: '{topic} overview video'"
+            {
+                "search_query": f"{topic} explained for {topic} beginners animated",
+                "expected_duration": "5-8 minutes",
+                "what_to_focus_on": "Pay attention to the key definitions and visual diagrams."
+            },
+            {
+                "search_query": f"Crash Course {topic} overview",
+                "expected_duration": "10-12 minutes",
+                "what_to_focus_on": "Note the real-world examples and historical context provided."
+            }
         ],
         "local_examples": [
-            f"Market Dynamics: Use a local market stall as an example of exchange or system flow in {topic}.",
-            f"Community Roles: Compare the elements of {topic} to the roles played by community leaders and workers."
+            f"Market Dynamics: Use a local market to demonstrate exchange or system flow in {topic}.",
+            f"Community Roles: Compare elements of {topic} to roles played by community leaders."
+        ],
+        "digital_tools": [
+            {
+                "tool_name": "Canva for Education",
+                "url": "https://www.canva.com/education/",
+                "how_to_use": f"Create visual infographics, mind maps, and presentations about {topic}. Free for teachers."
+            },
+            {
+                "tool_name": "Mentimeter",
+                "url": "https://www.mentimeter.com/",
+                "how_to_use": f"Run live interactive polls, word clouds, and quizzes about {topic} during class."
+            }
         ]
     }
 
@@ -355,22 +443,30 @@ def get_mock_improvement(lesson_plan):
             "engagement_score": 85,
             "clarity_score": 90,
             "alignment_score": 95,
-            "feedback": (
-                "- Added more student-led group tasks to boost active participation (Grace Persona style).\n"
-                "- Structured teacher instructions to make transitions clearer.\n"
-                "- Aligned exit ticket questions directly with objectives."
-            )
+            "content_accuracy_score": 88,
+            "feedback": [
+                "Added more student-led group tasks to boost active participation.",
+                "Structured teacher instructions to make transitions clearer.",
+                "Aligned exit ticket questions directly with objectives.",
+                "Added current real-world connections to increase relevance."
+            ],
+            "strengths": [
+                "Clear learning objectives that are measurable.",
+                "Good mix of teacher and student activities.",
+                "Assessment plan aligns well with stated objectives."
+            ]
         },
         "optimized_lesson_plan": {
-            "title": f"Optimized: {lesson_plan.get('title', 'Lesson Plan')}",
+            "title": f"Enhanced: {lesson_plan.get('title', 'Lesson Plan')}",
             "objectives": lesson_plan.get("objectives", ["Understand the concepts"]),
-            "introduction": lesson_plan.get("introduction", "") + " (Enhanced with an introductory reflection question)",
-            "teacher_activities": "1. [Improved] Introduce topic with dynamic concept mapping.\n" + lesson_plan.get("teacher_activities", ""),
-            "student_activities": "1. [Improved] Collaborate in groups of three on a mini-case study.\n" + lesson_plan.get("student_activities", ""),
-            "teaching_methods": lesson_plan.get("teaching_methods", "") + ", Collaborative Case Study",
-            "assessment_plan": lesson_plan.get("assessment_plan", "") + " (Enhanced with a peer-evaluation checklist)",
+            "introduction": lesson_plan.get("introduction", "") + " [Enhanced: Start with a current news story related to this topic]",
+            "teacher_activities": "[Improved] Begin with concept mapping, then " + lesson_plan.get("teacher_activities", ""),
+            "student_activities": "[Improved] Collaborative case study in groups of 3, then " + lesson_plan.get("student_activities", ""),
+            "teaching_methods": lesson_plan.get("teaching_methods", "") + ", Problem-Based Learning",
+            "assessment_plan": lesson_plan.get("assessment_plan", "") + " [Enhanced: Peer-evaluation checklist added]",
             "assignment": lesson_plan.get("assignment", ""),
             "summary": lesson_plan.get("summary", ""),
+            "current_relevance": lesson_plan.get("current_relevance", "Connect this topic to current events and technology."),
             "disclaimer": "Teacher Review Required: AI-generated lesson content should be reviewed before classroom use"
         }
     }

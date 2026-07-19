@@ -1,0 +1,71 @@
+# ===========================
+# Python / Virtual Environment
+# ===========================
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.so
+
+# ===========================
+# Environment & Secrets
+# ===========================
+.env
+.env.*
+!.env.example
+*.key
+
+# ===========================
+# Database (generated at runtime)
+# ===========================
+backend/lessons.db
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================
+# IDE / Editor
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Logs & Temp Files
+# ===========================
+*.log
+*.tmp
+*.bak
+tmp/
+temp/
+
+# ===========================
+# Node (if ever added)
+# ===========================
+node_modules/
+.npm/
+dist/
+.cache/
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+ehthumbs.db
