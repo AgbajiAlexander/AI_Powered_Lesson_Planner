@@ -163,7 +163,7 @@ button, input, select, textarea {
     border-radius: var(--radius-md);
     cursor: pointer;
     text-align: left;
-    transition: var(--transition);
+    transition: var(--transition), transform 0.25s ease;
     font-weight: 500;
 }
 
@@ -171,17 +171,41 @@ button, input, select, textarea {
     width: 20px;
     height: 20px;
     stroke-width: 2px;
+    transition: transform 0.25s ease, color 0.25s ease;
 }
 
 .nav-item:hover {
     color: var(--text-white);
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.nav-item:hover i {
+    transform: translateX(2px);
 }
 
 .nav-item.active {
     color: var(--text-white);
     background-color: var(--primary);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    animation: sidebar-active-pulse 1.2s ease-out;
+}
+
+.nav-item.active i {
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+@keyframes sidebar-active-pulse {
+    0% {
+        box-shadow: 0 0 0 rgba(37, 99, 235, 0.15);
+    }
+    50% {
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+    }
+    100% {
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
 }
 
 .user-profile {
