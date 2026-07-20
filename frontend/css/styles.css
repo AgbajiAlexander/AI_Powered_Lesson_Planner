@@ -72,6 +72,43 @@ button, input, select, textarea {
     overflow: hidden;
 }
 
+@media (max-width: 1024px) {
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        width: 100%;
+        padding: 16px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .sidebar-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .nav-item {
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+    }
+
+    .user-profile {
+        margin-top: 12px;
+    }
+
+    .main-content {
+        min-height: 0;
+    }
+}
+
 /* ==========================================
    Sidebar Navigation Styles
 ========================================== */
@@ -257,14 +294,31 @@ button, input, select, textarea {
 }
 
 .app-header {
-    height: 70px;
+    min-height: 70px;
     background-color: var(--bg-card);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 32px;
+    padding: 16px 32px;
     flex-shrink: 0;
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    .app-header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+    }
+
+    .header-search-container {
+        width: 100%;
+    }
+
+    .header-actions {
+        justify-content: flex-end;
+    }
 }
 
 .header-search-container {
@@ -304,6 +358,10 @@ button, input, select, textarea {
     display: flex;
     align-items: center;
     gap: 16px;
+}
+
+.header-actions .btn {
+    white-space: nowrap;
 }
 
 /* View Container System */
@@ -731,13 +789,15 @@ button, input, select, textarea {
 ========================================== */
 .generator-split-container {
     display: flex;
-    gap: 32px;
+    gap: 24px;
     height: 100%;
     overflow: hidden;
+    align-items: stretch;
 }
 
 .form-panel-sticky {
-    width: 360px;
+    width: min(360px, 100%);
+    max-width: 360px;
     background-color: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -748,6 +808,26 @@ button, input, select, textarea {
     flex-shrink: 0;
     overflow-y: auto;
     height: 100%;
+}
+
+@media (max-width: 1024px) {
+    .generator-split-container {
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+        height: auto;
+    }
+
+    .form-panel-sticky {
+        width: 100%;
+        max-width: none;
+        height: auto;
+        max-height: none;
+    }
+
+    .editor-panel {
+        min-height: 420px;
+    }
 }
 
 .panel-header h2 {

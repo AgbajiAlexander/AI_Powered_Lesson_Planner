@@ -32,7 +32,6 @@ const DOM = {
     closeSettingsBtn: document.getElementById("close-settings-btn"),
     cancelSettingsBtn: document.getElementById("btn-cancel-settings"),
     saveSettingsBtn: document.getElementById("btn-save-settings"),
-    quickSettingsBtn: document.getElementById("quick-settings-btn"),
     geminiKeyInput: document.getElementById("settings-gemini-key"),
     demoToggleInput: document.getElementById("settings-toggle-demo"),
     toggleKeyVisibility: document.getElementById("toggle-key-visibility"),
@@ -180,7 +179,6 @@ function initEventListeners() {
         DOM.settingsModal.classList.toggle("hidden", !show);
     };
     DOM.openSettingsBtn.addEventListener("click", () => toggleModal(true));
-    DOM.quickSettingsBtn.addEventListener("click", () => toggleModal(true));
     DOM.closeSettingsBtn.addEventListener("click", () => toggleModal(false));
     DOM.cancelSettingsBtn.addEventListener("click", () => toggleModal(false));
     
