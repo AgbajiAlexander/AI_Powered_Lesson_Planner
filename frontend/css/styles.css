@@ -84,6 +84,31 @@ button, input, select, textarea {
     flex-shrink: 0;
     padding: 24px 16px;
     border-right: 1px solid rgba(255,255,255,0.05);
+    opacity: 0;
+    transform: translateX(-24px);
+    animation: sidebar-slide-in 0.45s ease-out forwards;
+}
+
+.sidebar-nav .nav-item {
+    opacity: 0;
+    transform: translateX(-16px);
+    animation: sidebar-item-fade-in 0.35s ease-out forwards;
+}
+
+.sidebar-nav .nav-item:nth-child(1) {
+    animation-delay: 0.2s;
+}
+
+.sidebar-nav .nav-item:nth-child(2) {
+    animation-delay: 0.28s;
+}
+
+.sidebar-nav .nav-item:nth-child(3) {
+    animation-delay: 0.36s;
+}
+
+.sidebar-nav .nav-item:nth-child(4) {
+    animation-delay: 0.44s;
 }
 
 .logo-area {
@@ -269,6 +294,28 @@ button, input, select, textarea {
 .view-panel.active {
     display: flex;
     flex-direction: column;
+}
+
+@keyframes sidebar-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes sidebar-item-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 /* ==========================================
