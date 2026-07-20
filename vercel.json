@@ -12,15 +12,8 @@
       "dest": "/backend/app.py"
     },
     {
-      "src": "^/$",
-      "dest": "/frontend/index.html"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
       "src": "^/(.*)$",
-      "dest": "/frontend/$1"
+      "dest": "/backend/app.py"
     }
   ]
 }
