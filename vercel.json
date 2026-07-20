@@ -8,14 +8,18 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "^/api/(.*)$",
       "dest": "/backend/app.py"
+    },
+    {
+      "src": "^/$",
+      "dest": "/frontend/index.html"
     },
     {
       "handle": "filesystem"
     },
     {
-      "src": "/(.*)",
+      "src": "^/(.*)$",
       "dest": "/frontend/$1"
     }
   ]
